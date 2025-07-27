@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Solar System - Final Edition</title>
+    <style>
+        /* --- 基本设置 --- */
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000; /* 纯黑背景 */
+            overflow: hidden;
+            cursor: default;
+            font-family: sans-serif;
+        }
+        
+        /* --- 新增：深空背景 --- */
+        #star-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* 确保在最底层 */
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle linear infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .solar-system {
+            position: relative;
+            width: 70vmin;
+            height: 70vmin;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- 太阳样式 --- */
+        #sun {
+            width: 10%;
+            height: 10%;
+            background-color: #fdd835;
+            border-radius: 50%;
+            box-shadow: 0 0 60px #fdd835, 0 0 90px #f57f17;
+            position: absolute;
+            z-index: 10;
+            cursor: pointer;
+        }
+        
+        /* --- 轨道和行星 --- */
+        .orbit {
+            position: absolute;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            animation: spin linear infinite;
+            cursor: crosshair;
+        }
+
+        .planet {
+            position: absolute;
+            border-radius: 50%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Tooltip --- */
+        .tooltip {
+            position: absolute;
+            display: none;
+            padding: 12px 18px;
+            background-color: rgba(10, 20, 30, 0.8);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 13px;
+            white-space: pre;
+            pointer-events: none;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(8px);
+            line-height: 1.7;
+            min-width: 230px;
+        }
+        .tooltip b { color: #fdd835; font-size: 16px; }
+        .tooltip .label { color: #9e9e9e; }
+        
+        /* --- 行星 z-index --- */
+        #mercury-orbit { width: 20%; height: 20%; animation-duration: 8.8s; z-index: 8; }
+        #mercury { width: 8px; height: 8px; background-color: #BCAAA4; left: -4px; }
+        #venus-orbit { width: 30%; height: 30%; animation-duration: 22.5s; z-index: 7; }
+        #venus { width: 12px; height: 12px; background-color: #FFF59D; left: -6px; }
+        #earth-orbit { width: 45%; height: 45%; animation-duration: 36.5s; z-index: 6; }
+        #earth { width: 14px; height: 14px; background: linear-gradient(to bottom, #4FC3F7, #2E7D32); left: -7px; }
+        #mars-orbit { width: 60%; height: 60%; animation-duration: 68.7s; z-index: 5; }
+        #mars { width: 10px; height: 10px; background-color: #E57373; left: -5px; }
+        #jupiter-orbit { width: 80%; height: 80%; animation-duration: 100s; z-index: 4; }
+        #jupiter { width: 28px; height: 28px; background: linear-gradient(to bottom, #F5F5F5, #FFCC80); left: -14px; }
+        #saturn-orbit { width: 100%; height: 100%; animation-duration: 150s; z-index: 3; }
+        #saturn { width: 24px; height: 24px; background-color: #FFE082; left: -12px; }
+        #saturn::before { content: ''; position: absolute; top: 50%; left: 50%; width: 200%; height: 200%; border: 2px solid rgba(255, 224, 130, 0.7); border-radius: 50%; transform: translate(-50%, -50%) rotateX(70deg); }
+        #uranus-orbit { width: 120%; height: 120%; animation-duration: 200s; z-index: 2; }
+        #uranus { width: 18px; height: 18px; background-color: #B2EBF2; left: -9px; }
+        #neptune-orbit { width: 140%; height: 140%; animation-duration: 250s; z-index: 1; }
+        #neptune { width: 16px; height: 16px; background-color: #81D4FA; left: -8px; }
+
+        /* --- 彗星和粒子效果样式 (V6 - 艺术品级) --- */
+        
+        /* 轨道平面：旋转（无变化） */
+        #comet-orbit-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 160vmin; /* 稍微再扩大一点，让轨迹更舒展 */
+            height: 160vmin;
+            pointer-events: none;
+            animation: rotate-comet-plane 29s linear infinite;
+        }
+
+        /* 彗星本体 */
+        #comet {
+            position: absolute;
+            top: 35%; /* 偏离中心，擦肩而过 */
+            left: 0;
+            
+            width: 8px;
+            height: 8px;
+            background-color: #E0F7FA;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #80DEEA, 0 0 25px #fff, 0 0 40px #00bcd4;
+            
+            /* 【【【【【【 终极修正 】】】】】】 */
+            /* 1. 大幅延长动画时间，这是降低整体速度最有效的手段 */
+            animation-name: artistic-comet-flight;
+            animation-duration: 100s; /* 从 22s 延长到 40s，整体速度接近减半 */
+            animation-iteration-count: infinite;
+            
+            /* 2. 使用一条更“慵懒”的贝塞尔曲线，降低峰值速度 */
+            animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
+        }
+
+        .particle {
+            position: absolute;
+            background-color: #80DEEA;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 19;
+        }
+
+        /* 轨道平面的旋转动画（无变化） */
+        @keyframes rotate-comet-plane {
+            from {
+                transform: translate(-50%, -50%) rotate(-20deg);
+            }
+            to {
+                transform: translate(-50%, -50%) rotate(340deg);
+            }
+        }
+
+        /* 【【【【【【 关键修正 2：带“留白”的艺术化动画流程 】】】】】】 */
+        @keyframes artistic-comet-flight {
+            /* 第0-10%：是彗星在屏幕外的“留白”时间，完全看不见 */
+            0% {
+                transform: translateX(0vmin);
+                opacity: 0;
+            }
+            /* 从10%开始，彗星才真正进入视野并淡入 */
+            10% {
+                transform: translateX(0vmin);
+                opacity: 0;
+            }
+            20% {
+                opacity: 1; /* 用10%的时间完全淡入 */
+            }
+            /* 第20-80%是飞越过程 */
+            80% {
+                opacity: 1; /* 在离开前都保持可见 */
+            }
+            /* 从80%开始淡出，90%时完全消失，飞出视野 */
+            90% {
+                transform: translateX(160vmin);
+                opacity: 0;
+            }
+            /* 第90-100%：是彗星在屏幕另一侧的“留白”时间 */
+            100% {
+                transform: translateX(160vmin);
+                opacity: 0;
+            }
+        }
+        
+        /* 粒子尾巴的动画（无变化） */
+        @keyframes tail-stream {
+            from {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0) translate(var(--tail-x), var(--tail-y));
+            }
+        }
+
+    </style>
+</head>
+<body>
+    
+    <div id="star-background"></div>
+
+    <div class="solar-system">
+        <!-- 太阳和行星的 HTML (无变化) -->
+        <div id="sun" data-name="太阳 (Sun)" data-diameter="1,392,700 km" data-mass="1.989 × 10³⁰ kg" data-temp-surface="约 5500°C" data-rotate-v="约 2 km/s" data-galaxy-v="约 230 km/s"></div>
+        <div class="orbit" id="mercury-orbit" data-name="水星 (Mercury)" data-diameter="4,879 km" data-mass="3.30 × 10²³ kg" data-perihelion="46 M km" data-aphelion="69.8 M km" data-atmosphere="极稀薄 (外逸层)" data-orbit-v="47.4 km/s" data-rotate-v="0.003 km/s"><div class="planet" id="mercury"></div></div>
+        <div class="orbit" id="venus-orbit" data-name="金星 (Venus)" data-diameter="12,104 km" data-mass="4.87 × 10²⁴ kg" data-perihelion="107.5 M km" data-aphelion="108.9 M km" data-atmosphere="非常浓厚 (92倍地球)" data-orbit-v="35.0 km/s" data-rotate-v="0.0018 km/s"><div class="planet" id="venus"></div></div>
+        <div class="orbit" id="earth-orbit" data-name="地球 (Earth)" data-diameter="12,742 km" data-mass="5.97 × 10²⁴ kg" data-perihelion="147.1 M km" data-aphelion="152.1 M km" data-atmosphere="约 100 km (卡门线)" data-orbit-v="29.8 km/s" data-rotate-v="0.46 km/s"><div class="planet" id="earth"></div></div>
+        <div class="orbit" id="mars-orbit" data-name="火星 (Mars)" data-diameter="6,779 km" data-mass="6.42 × 10²³ kg" data-perihelion="206.7 M km" data-aphelion="249.2 M km" data-atmosphere="稀薄 (约地球1%)" data-orbit-v="24.1 km/s" data-rotate-v="0.24 km/s"><div class="planet" id="mars"></div></div>
+        <div class="orbit" id="jupiter-orbit" data-name="木星 (Jupiter)" data-diameter="139,820 km" data-mass="1.90 × 10²⁷ kg" data-perihelion="740.5 M km" data-aphelion="816.6 M km" data-atmosphere="极为深厚 (气态巨行星)" data-orbit-v="13.1 km/s" data-rotate-v="12.6 km/s"><div class="planet" id="jupiter"></div></div>
+        <div class="orbit" id="saturn-orbit" data-name="土星 (Saturn)" data-diameter="116,460 km" data-mass="5.68 × 10²⁶ kg" data-perihelion="1352.6 M km" data-aphelion="1514.5 M km" data-atmosphere="极为深厚 (气态巨行星)" data-orbit-v="9.7 km/s" data-rotate-v="9.87 km/s"><div class="planet" id="saturn"></div></div>
+        <div class="orbit" id="uranus-orbit" data-name="天王星 (Uranus)" data-diameter="50,724 km" data-mass="8.68 × 10²⁵ kg" data-perihelion="2741.3 M km" data-aphelion="3003.6 M km" data-atmosphere="深厚 (冰巨行星)" data-orbit-v="6.8 km/s" data-rotate-v="2.59 km/s"><div class="planet" id="uranus"></div></div>
+        <div class="orbit" id="neptune-orbit" data-name="海王星 (Neptune)" data-diameter="49,244 km" data-mass="1.02 × 10²⁶ kg" data-perihelion="4444.5 M km" data-aphelion="4545.7 M km" data-atmosphere="深厚 (冰巨行星)" data-orbit-v="5.4 km/s" data-rotate-v="2.68 km/s"><div class="planet" id="neptune"></div></div>
+
+            <!-- comet-orbit-container 彗星轨道容器 -->
+        <div id="comet-orbit-container">
+            <div id="comet"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript 部分已更新 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- 新增：创建闪烁的星空 ---
+            const starBackground = document.getElementById('star-background');
+            const starCount = 200; // 星星的数量
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                const size = Math.random() * 2 + 0.5; // 0.5px to 2.5px
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.left = `${Math.random() * 100}%`;
+                // 随机动画延迟和周期，让闪烁看起来更自然
+                star.style.animationDelay = `${Math.random() * 5}s`;
+                star.style.animationDuration = `${Math.random() * 3 + 2}s`; // 2s to 5s
+                starBackground.appendChild(star);
+            }
+            
+            // --- Tooltip 功能 ---
+            const tooltip = document.createElement('div');
+            tooltip.classList.add('tooltip');
+            document.body.appendChild(tooltip);
+            const interactiveElements = document.querySelectorAll('.orbit, #sun');
+            interactiveElements.forEach(element => {
+                element.addEventListener('mouseover', (event) => {
+                    const target = event.currentTarget; const data = target.dataset; let content = '';
+                    if (target.id === 'sun') {
+                        content = `<b>${data.name}</b>\n-------------------------\n<span class="label">直径:</span>       ${data.diameter}\n<span class="label">质量:</span>       ${data.mass}\n<span class="label">表面温度:</span>   ${data.tempSurface}\n<span class="label">赤道自转:</span>   ${data.rotateV}\n<span class="label">银河系公转:</span> ${data.galaxyV}`;
+                    } else {
+                        content = `<b>${data.name}</b>\n-------------------------\n<span class="label">直径:</span>     ${data.diameter}\n<span class="label">质量:</span>     ${data.mass}\n<span class="label">大气:</span>     ${data.atmosphere}\n<span class="label">近日距离:</span> ${data.perihelion}\n<span class="label">远日距离:</span> ${data.aphelion}\n<span class="label">公转速度:</span> ${data.orbitV}\n<span class="label">自转速度:</span> ${data.rotateV}`;
+                    }
+                    tooltip.innerHTML = content; tooltip.style.display = 'block';
+                });
+                element.addEventListener('mousemove', (event) => {
+                    tooltip.style.left = (event.pageX + 15) + 'px'; tooltip.style.top = (event.pageY + 15) + 'px';
+                });
+                element.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+            });
+
+            // --- 彗星粒子效果 (V2 - 智能彗尾) ---
+            const comet = document.getElementById('comet');
+            const sun = document.getElementById('sun');
+            const solarSystem = document.querySelector('.solar-system');
+
+            setInterval(() => {
+                // 1. 获取太阳和彗星的实时位置
+                const sunRect = sun.getBoundingClientRect();
+                const cometRect = comet.getBoundingClientRect();
+
+                // 2. 计算从太阳指向彗星的向量
+                const vectorX = cometRect.left - sunRect.left;
+                const vectorY = cometRect.top - sunRect.top;
+                const magnitude = Math.sqrt(vectorX * vectorX + vectorY * vectorY);
+                
+                // 3. 标准化向量（得到纯方向）
+                const directionX = vectorX / magnitude;
+                const directionY = vectorY / magnitude;
+
+                // 创建 1-2 个粒子来形成更流畅的尾巴
+                for (let i = 0; i < 2; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('particle');
+                    
+                    // 粒子初始位置在彗星中心
+                    particle.style.left = (cometRect.left - solarSystem.getBoundingClientRect().left + cometRect.width / 2) + 'px';
+                    particle.style.top = (cometRect.top - solarSystem.getBoundingClientRect().top + cometRect.height / 2) + 'px';
+
+                    // 4. 为粒子设置移动方向和距离（CSS 变量）
+                    const tailLength = (Math.random() * 80) + 50; // 尾巴长度随机
+                    const spread = 0.6; // 尾巴发散角度
+                    // 在基础方向上增加一些随机性，形成锥形尾巴
+                    const tailX = (directionX + (Math.random() - 0.5) * spread) * tailLength;
+                    const tailY = (directionY + (Math.random() - 0.5) * spread) * tailLength;
+                    particle.style.setProperty('--tail-x', `${tailX}px`);
+                    particle.style.setProperty('--tail-y', `${tailY}px`);
+
+                    // 5. 设置粒子大小和动画
+                    const particleSize = Math.random() * 2 + 1;
+                    particle.style.width = `${particleSize}px`;
+                    particle.style.height = `${particleSize}px`;
+                    
+                    const animationDuration = (Math.random() * 1.5) + 1; // 1s to 2.5s
+                    particle.style.animation = `tail-stream ${animationDuration}s linear forwards`;
+                    
+                    // 动画结束后移除粒子
+                    particle.addEventListener('animationend', () => {
+                        particle.remove();
+                    });
+
+                    solarSystem.appendChild(particle);
+                }
+            }, 70); // 稍微降低生成频率
+        });
+    </script>
+
+</body>
+</html>
